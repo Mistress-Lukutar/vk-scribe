@@ -3,7 +3,7 @@ File:   ocr.py
 Brief:  Slide OCR via RapidOCR with the East-Slavic recognition model.
 Author: Mistress-Lukutar
 Date:   2026-09-12
-Version: v1.3.1
+Version: v1.4.0
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import shutil
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -174,22 +175,30 @@ class SlideOcr:
         return rows
 
 
-def ocr_slides(records: list[SlideRecord], ocr: SlideOcr) -> None:
+def ocr_slides(
+    records: list[SlideRecord],
+    ocr: SlideOcr,
+    progress: Callable[[float], None] | None = None,
+) -> None:
     """Run OCR over every unique slide, filling ``ocr_text`` in place.
 
     Args:
         records: Unique slide records with representative frames.
         ocr: Initialized OCR wrapper.
+        progress: Optional callback invoked with the completed fraction
+            (0..1) of slides as recognition advances.
     """
     for idx, record in enumerate(records, start=1):
         if record.frame is None:
             continue
         record.ocr_text = ocr.read_slide(record.frame)
-        logger.info(
+        logger.debug(
             "OCR slide %d/%d [%s]: %d chars",
             idx,
             len(records),
             format_timecode(record.timecodes[0]),
             len(record.ocr_text),
         )
+        if progress is not None:
+            progress(idx / len(records))
         # frame stays alive: write_slides_pdf() needs it after OCR

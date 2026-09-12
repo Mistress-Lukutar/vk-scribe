@@ -3,12 +3,13 @@ File:   transcriber.py
 Brief:  Speech transcription via faster-whisper with CUDA -> CPU fallback.
 Author: Mistress-Lukutar
 Date:   2026-09-12
-Version: v1.3.1
+Version: v1.4.0
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
 from vk_scribe.core.exceptions import VkScribeError
@@ -60,30 +61,51 @@ class SpeechTranscriber:
         self,
         video_path: Path,
         language: str | None = None,
+        progress: Callable[[float], None] | None = None,
     ) -> list[TranscriptSegment]:
         """Transcribe the audio track of a video file.
 
         Args:
             video_path: Media file (audio decoded via PyAV, no ffmpeg call).
             language: ISO code (``ru``, ``en``) or None for auto-detect.
+            progress: Optional callback invoked with the transcribed
+                fraction (0..1) of the audio as segments arrive.
 
         Returns:
             Transcript segments with timecodes.
+
+        Raises:
+            VkScribeError: If the audio track cannot be decoded or read.
         """
-        segments_iter, info = self._model.transcribe(
-            str(video_path),
-            language=language,
-            vad_filter=True,
-            vad_parameters={"min_silence_duration_ms": 500},
-            beam_size=5,
-            condition_on_previous_text=False,
-            no_repeat_ngram_size=3,
-        )
-        segments = [
-            TranscriptSegment(start=seg.start, end=seg.end, text=seg.text.strip())
-            for seg in segments_iter
-            if seg.text.strip()
-        ]
+        try:
+            segments_iter, info = self._model.transcribe(
+                str(video_path),
+                language=language,
+                vad_filter=True,
+                vad_parameters={"min_silence_duration_ms": 500},
+                beam_size=5,
+                condition_on_previous_text=False,
+                no_repeat_ngram_size=3,
+            )
+            duration = float(info.duration or 0.0)
+            segments: list[TranscriptSegment] = []
+            for seg in segments_iter:
+                if seg.text.strip():
+                    segments.append(
+                        TranscriptSegment(
+                            start=seg.start, end=seg.end, text=seg.text.strip()
+                        )
+                    )
+                if progress is not None and duration > 0.0:
+                    progress(min(seg.end / duration, 1.0))
+        except VkScribeError:
+            raise
+        except Exception as exc:
+            raise VkScribeError(
+                f"Cannot decode the audio track of {video_path.name}: {exc}"
+            ) from exc
+        if progress is not None:
+            progress(1.0)
         logger.info(
             "Transcribed %s: %d segments, language=%s (p=%.2f)",
             video_path.name,

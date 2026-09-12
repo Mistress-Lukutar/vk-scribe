@@ -4,12 +4,13 @@ Brief:  Slide detection, deduplication, and merging over decoded video
         frames (OpenCV).
 Author: Mistress-Lukutar
 Date:   2026-09-12
-Version: v1.3.1
+Version: v1.4.0
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
 import cv2
@@ -64,6 +65,7 @@ def detect_slide_changes(
     sample_interval: float = DEFAULT_SAMPLE_INTERVAL,
     change_ratio: float = DEFAULT_CHANGE_RATIO,
     min_slide_seconds: float = DEFAULT_MIN_SLIDE_SECONDS,
+    progress: Callable[[float], None] | None = None,
 ) -> list[SlideRecord]:
     """Detect slide boundaries and pick one frame per stable slide segment.
 
@@ -81,6 +83,8 @@ def detect_slide_changes(
         sample_interval: Seconds between sampled frames.
         change_ratio: Changed-pixel fraction (0-1) marking a slide change.
         min_slide_seconds: Minimum stable segment duration.
+        progress: Optional callback invoked with the scanned fraction
+            (0..1) of the video as frames are decoded.
 
     Returns:
         Slide records with timecodes and representative frames (no OCR yet).
@@ -109,7 +113,11 @@ def detect_slide_changes(
         ok, frame = capture.read()
         if ok and frame is not None:
             samples.append((timestamp, frame, _frame_signature(frame)))
+        if progress is not None and duration > 0.0:
+            progress(min(timestamp / duration, 1.0))
         timestamp += sample_interval
+    if progress is not None:
+        progress(1.0)
     capture.release()
     if not samples:
         raise VideoOpenError(f"No frames decoded from: {video_path}")

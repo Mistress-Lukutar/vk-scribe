@@ -12,7 +12,16 @@ video the tool produces, side by side with the file:
 
 ## Quick start (Windows)
 
-No manual prerequisites — `run.ps1` bootstraps everything:
+No manual prerequisites — `run.ps1` bootstraps everything. Run it
+without arguments for a step-by-step interactive menu that asks for the
+playlist, the output folder, the recognition quality, and what to
+extract, then shows live progress for every stage:
+
+```powershell
+.\run.ps1
+```
+
+Prefer a single command? That works too:
 
 ```powershell
 .\run.ps1 run "https://vkvideo.ru/playlist/-169062866_5/season_0" -o vk_course
@@ -40,9 +49,16 @@ On first use the tool also downloads:
 
 | Command | What it does |
 |---|---|
+| *(no command)* | Interactive menu — prompts for everything, then runs |
+| `menu` | Same interactive menu, explicitly |
 | `run <URL>` | Download the playlist, then extract text for every video |
 | `download <URL>` | Only download the playlist |
 | `extract <DIR>` | Extract text from videos already in a local folder |
+
+Every command shows two live progress bars: an overall one
+("3 of 12 videos") and a per-video one — percent downloaded while
+fetching, then the current stage (speech recognition, slide detection,
+slide OCR) while extracting.
 
 Full cycle:
 

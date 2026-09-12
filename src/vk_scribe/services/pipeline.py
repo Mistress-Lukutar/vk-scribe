@@ -3,7 +3,7 @@ File:   pipeline.py
 Brief:  Extraction orchestration: per-video pipeline and folder batching.
 Author: Mistress-Lukutar
 Date:   2026-09-12
-Version: v1.3.1
+Version: v1.4.0
 """
 
 from __future__ import annotations
@@ -32,12 +32,59 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class ExtractHooks:
+    """Progress callbacks emitted while extracting text.
+
+    The base implementation does nothing, so ``ExtractHooks()`` gives a
+    silent, logging-only run; the CLI subclasses it to drive progress
+    bars. Override only the hooks of interest.
+    """
+
+    def on_video_start(self, index: int, total: int, name: str) -> None:
+        """Report that a video began processing.
+
+        Args:
+            index: 1-based position among the videos to process.
+            total: Number of videos to process.
+            name: Video file name.
+        """
+
+    def on_status(self, message: str) -> None:
+        """Report a preparation phase (model loading, first-run downloads).
+
+        Args:
+            message: Short human-readable status.
+        """
+
+    def on_stage(self, stage: str) -> None:
+        """Report that a processing stage started for the current video.
+
+        Args:
+            stage: One of ``speech``, ``slides``, ``ocr``, ``report``.
+        """
+
+    def on_fraction(self, fraction: float) -> None:
+        """Report progress inside the current stage.
+
+        Args:
+            fraction: Completed fraction, 0..1.
+        """
+
+    def on_video_end(self, success: bool) -> None:
+        """Report that the current video finished.
+
+        Args:
+            success: False when the video failed and was skipped.
+        """
+
+
 def process_video(
     video_path: Path,
     transcriber: SpeechTranscriber | None,
     ocr: SlideOcr | None,
     options: ExtractOptions,
     source_url: str = "",
+    hooks: ExtractHooks | None = None,
 ) -> Path:
     """Run the full extraction pipeline for a single video.
 
@@ -47,28 +94,37 @@ def process_video(
         ocr: OCR wrapper or None to skip slides.
         options: Tuning parameters (thresholds, skips, language).
         source_url: Original VK URL for the report header.
+        hooks: Optional progress callbacks.
 
     Returns:
         Path of the written report.
     """
+    hooks = hooks or ExtractHooks()
     transcript: list[TranscriptSegment] = []
     if transcriber is not None:
-        transcript = transcriber.transcribe(video_path, language=options.language)
+        hooks.on_stage("speech")
+        transcript = transcriber.transcribe(
+            video_path, language=options.language, progress=hooks.on_fraction
+        )
     subtitles = find_subtitles(video_path)
 
     slides: list[SlideRecord] = []
     if ocr is not None:
+        hooks.on_stage("slides")
         raw = detect_slide_changes(
             video_path,
             sample_interval=options.sample_interval,
             change_ratio=options.change_ratio,
             min_slide_seconds=options.min_slide_seconds,
+            progress=hooks.on_fraction,
         )
         unique = deduplicate_slides(raw, dedup_ratio=options.dedup_ratio)
-        ocr_slides(unique, ocr)
+        hooks.on_stage("ocr")
+        ocr_slides(unique, ocr, progress=hooks.on_fraction)
         slides = merge_progressive_slides(unique)
 
     # report first: a PDF failure must not take the text down with it
+    hooks.on_stage("report")
     report_path = write_report(video_path, transcript, subtitles, slides, source_url)
     if slides and not options.skip_pdf:
         try:
@@ -80,16 +136,22 @@ def process_video(
     return report_path
 
 
-def extract_folder(folder: Path, options: ExtractOptions) -> None:
+def extract_folder(
+    folder: Path,
+    options: ExtractOptions,
+    hooks: ExtractHooks | None = None,
+) -> None:
     """Process every video in a folder, skipping already-done ones.
 
     Args:
         folder: Folder with videos (reports land next to them).
         options: Tuning parameters (thresholds, skips, limits).
+        hooks: Optional progress callbacks.
 
     Raises:
         VkScribeError: If the folder does not exist.
     """
+    hooks = hooks or ExtractHooks()
     if not folder.is_dir():
         raise VkScribeError(f"Not a directory: {folder}")
     videos = find_video_files(folder)
@@ -107,19 +169,26 @@ def extract_folder(folder: Path, options: ExtractOptions) -> None:
         len(videos) - len(pending),
     )
     if not pending:
+        logger.info("Nothing to do: every video already has a report.")
         return
 
     manifest = load_manifest(folder)
-    transcriber = (
-        None
-        if options.skip_whisper
-        else SpeechTranscriber(options.whisper_model, options.device)
-    )
-    ocr = None if options.skip_ocr else SlideOcr()
+    transcriber: SpeechTranscriber | None = None
+    if not options.skip_whisper:
+        hooks.on_status(
+            f"Loading speech model '{options.whisper_model}'"
+            " (first run downloads it)..."
+        )
+        transcriber = SpeechTranscriber(options.whisper_model, options.device)
+    ocr: SlideOcr | None = None
+    if not options.skip_ocr:
+        hooks.on_status("Loading OCR engine...")
+        ocr = SlideOcr()
 
     failures: list[str] = []
     for idx, video in enumerate(pending, start=1):
-        logger.info("=== [%d/%d] %s", idx, len(pending), video.name)
+        logger.debug("=== [%d/%d] %s", idx, len(pending), video.name)
+        hooks.on_video_start(idx, len(pending), video.name)
         try:
             process_video(
                 video,
@@ -127,9 +196,12 @@ def extract_folder(folder: Path, options: ExtractOptions) -> None:
                 ocr=ocr,
                 options=options,
                 source_url=manifest.get(video.name, ""),
+                hooks=hooks,
             )
+            hooks.on_video_end(True)
         except VkScribeError as exc:
             logger.error("Failed: %s", exc)
+            hooks.on_video_end(False)
             failures.append(video.name)
     if failures:
         logger.warning("Failed videos (%d): %s", len(failures), failures)

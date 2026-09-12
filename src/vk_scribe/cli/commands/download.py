@@ -4,7 +4,7 @@ File:   download.py
 Brief:  "download" subcommand: fetch a playlist without text extraction.
 Author: Mistress-Lukutar
 Date:   2026-09-12
-Version: v1.3.1
+Version: v1.4.0
 """
 
 from __future__ import annotations
@@ -12,8 +12,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
+from rich.console import Console
 
 from vk_scribe.cli.logging_setup import configure_logging
+from vk_scribe.cli.ui import CliProgress
 from vk_scribe.infrastructure.downloader import download_playlist
 
 
@@ -29,4 +31,10 @@ def download(
 ) -> None:
     """Only download the playlist (no text extraction)."""
     configure_logging(verbose)
-    download_playlist(url, output_dir, cookies_file=cookies_file)
+    with CliProgress(Console()) as progress:
+        download_playlist(
+            url,
+            output_dir,
+            cookies_file=cookies_file,
+            hooks=progress.download_hooks(),
+        )

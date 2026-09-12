@@ -5,12 +5,15 @@
 .DESCRIPTION
   Bootstraps the tool end to end: installs uv when missing (winget, with
   the official installer script as a fallback), checks ffmpeg before
-  downloading commands (and offers to install it via winget when absent),
-  syncs the project virtual environment (.venv) from pyproject.toml /
-  uv.lock — downloading a managed Python when needed — then runs the
-  vk-scribe CLI with every argument passed through.
+  anything that may download (and offers to install it via winget when
+  absent), syncs the project virtual environment (.venv) from
+  pyproject.toml / uv.lock — downloading a managed Python when needed —
+  then runs the vk-scribe CLI with every argument passed through.
+  Without arguments the CLI opens an interactive menu that asks for
+  the playlist, the output folder, and the settings step by step.
 
 .EXAMPLE
+  .\run.ps1
   .\run.ps1 run "https://vkvideo.ru/playlist/-169062866_5/season_0" -o vk_course
   .\run.ps1 extract .\vk_course --skip-whisper
   .\run.ps1 --help
@@ -84,9 +87,10 @@ function Ensure-Ffmpeg {
 Set-Location $ProjectRoot
 Ensure-Uv
 
-# Only the downloading commands need ffmpeg; extract reads local files.
+# run/download need ffmpeg, the interactive menu usually downloads too;
+# only extract reads local files, so it works without ffmpeg.
 $Command = if ($CliArgs) { $CliArgs[0] } else { '' }
-if ($Command -in @('run', 'download')) {
+if ($Command -notin @('extract', '--help', '-h')) {
     Ensure-Ffmpeg
 }
 
@@ -95,6 +99,7 @@ Write-Host 'Syncing dependencies...' -ForegroundColor Cyan
 uv sync
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-if (-not $CliArgs) { $CliArgs = @('--help') }
+# No arguments = interactive menu.
+if (-not $CliArgs) { $CliArgs = @() }
 uv run --no-sync -- vk-scribe @CliArgs
 exit $LASTEXITCODE

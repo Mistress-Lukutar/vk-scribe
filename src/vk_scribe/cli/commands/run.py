@@ -4,7 +4,7 @@ File:   run.py
 Brief:  "run" subcommand: download a playlist, then extract text.
 Author: Mistress-Lukutar
 Date:   2026-09-12
-Version: v1.3.1
+Version: v1.4.0
 """
 
 from __future__ import annotations
@@ -12,8 +12,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import typer
+from rich.console import Console
 
 from vk_scribe.cli.logging_setup import configure_logging
+from vk_scribe.cli.ui import CliProgress
 from vk_scribe.core.constants import (
     DEFAULT_CHANGE_RATIO,
     DEFAULT_SAMPLE_INTERVAL,
@@ -73,19 +75,23 @@ def run(
 ) -> None:
     """Download the playlist, then extract text for every video."""
     configure_logging(verbose)
-    download_playlist(url, output_dir, cookies_file=cookies_file)
-    extract_folder(
-        output_dir,
-        ExtractOptions(
-            whisper_model=whisper_model,
-            device=device,  # type: ignore[arg-type]
-            language=language,
-            sample_interval=sample_interval,
-            change_ratio=change_ratio,
-            skip_whisper=skip_whisper,
-            skip_ocr=skip_ocr,
-            skip_pdf=skip_pdf,
-            overwrite=overwrite,
-            limit=limit,
-        ),
+    options = ExtractOptions(
+        whisper_model=whisper_model,
+        device=device,  # type: ignore[arg-type]
+        language=language,
+        sample_interval=sample_interval,
+        change_ratio=change_ratio,
+        skip_whisper=skip_whisper,
+        skip_ocr=skip_ocr,
+        skip_pdf=skip_pdf,
+        overwrite=overwrite,
+        limit=limit,
     )
+    with CliProgress(Console()) as progress:
+        download_playlist(
+            url,
+            output_dir,
+            cookies_file=cookies_file,
+            hooks=progress.download_hooks(),
+        )
+        extract_folder(output_dir, options, hooks=progress.extract_hooks())
