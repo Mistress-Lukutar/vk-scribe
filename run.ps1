@@ -95,8 +95,16 @@ if ($Command -notin @('extract', '--help', '-h')) {
 }
 
 # Create/refresh .venv and install all dependencies (idempotent).
-Write-Host 'Syncing dependencies...' -ForegroundColor Cyan
-uv sync
+# An NVIDIA GPU also gets the CUDA runtime wheels (cuBLAS/cuDNN) so
+# Whisper can run on it; without one, Whisper uses the CPU.
+if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) {
+    Write-Host 'NVIDIA GPU detected - syncing dependencies (with CUDA support)...' -ForegroundColor Cyan
+    uv sync --extra cuda
+}
+else {
+    Write-Host 'Syncing dependencies...' -ForegroundColor Cyan
+    uv sync
+}
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # No arguments = interactive menu.

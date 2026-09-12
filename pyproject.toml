@@ -1,6 +1,6 @@
 [project]
 name = "vk-scribe"
-version = "1.4.0"
+version = "1.4.1"
 description = "Download VK Video playlists and turn lectures into text: speech transcripts, slide OCR, rebuilt PDF decks"
 readme = "README.md"
 authors = [{ name = "Mistress-Lukutar" }]
@@ -18,6 +18,15 @@ dependencies = [
 
 [project.scripts]
 vk-scribe = "vk_scribe.cli.main:app"
+
+[project.optional-dependencies]
+# CUDA 12 runtime wheels (cuBLAS + cuDNN) for Whisper on NVIDIA GPUs.
+# Installed automatically by run.ps1 when an NVIDIA GPU is detected:
+#   uv sync --extra cuda
+cuda = [
+    "nvidia-cublas-cu12>=12.0",
+    "nvidia-cudnn-cu12>=9.0",
+]
 
 [dependency-groups]
 dev = [

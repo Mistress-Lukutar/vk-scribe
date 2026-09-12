@@ -37,7 +37,10 @@ The launcher:
    `n` = skip). `extract` reads local files without ffmpeg, so the check
    is skipped for it;
 3. runs `uv sync` — creates `.venv`, installs every dependency from
-   `uv.lock`, and downloads a managed Python 3.13 if none is present;
+   `uv.lock`, and downloads a managed Python 3.13 if none is present.
+   When an **NVIDIA GPU** is detected (`nvidia-smi` found), it also
+   installs the CUDA runtime wheels (cuBLAS + cuDNN, `--extra cuda`) so
+   Whisper runs on the GPU; otherwise Whisper uses the CPU;
 4. launches the `vk-scribe` CLI with all passed-through arguments.
 
 On first use the tool also downloads:
@@ -143,9 +146,10 @@ new playlist entries (yt-dlp download archive).
 
 - **Whisper model download fails (huggingface.co unreachable)** — point
   at a mirror first: `$env:HF_ENDPOINT="https://hf-mirror.com"`.
-- **CUDA errors from faster-whisper (cublas/cudnn)** — the tool falls
-  back to CPU automatically. For GPU support install
-  `nvidia-cudnn-cu12 nvidia-cublas-cu12` into the environment.
+- **CUDA errors from faster-whisper (cublas/cudnn)** — run the launcher
+  once with an NVIDIA GPU present: it installs the CUDA wheels
+  automatically (`uv sync --extra cuda` does the same by hand). Without
+  them the tool logs one line and runs on the CPU.
 - **yt-dlp format errors / HTTP 403** — update it: `uv add yt-dlp -U`
   (VK changes its delivery periodically).
 - **Private playlist** — export cookies from the browser (the
