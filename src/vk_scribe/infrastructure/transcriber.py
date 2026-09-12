@@ -3,7 +3,7 @@ File:   transcriber.py
 Brief:  Speech transcription via faster-whisper with CUDA -> CPU fallback.
 Author: Mistress-Lukutar
 Date:   2026-09-12
-Version: v1.3.0
+Version: v1.3.1
 """
 
 from __future__ import annotations

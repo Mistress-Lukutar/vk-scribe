@@ -3,7 +3,7 @@ File:   report.py
 Brief:  Combined text report and slide-deck PDF writing.
 Author: Mistress-Lukutar
 Date:   2026-09-12
-Version: v1.3.0
+Version: v1.3.1
 """
 
 from __future__ import annotations

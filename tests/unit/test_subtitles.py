@@ -3,7 +3,7 @@ File:   test_subtitles.py
 Brief:  Tests for WebVTT parsing and sidecar discovery.
 Author: Mistress-Lukutar
 Date:   2026-09-12
-Version: v1.3.0
+Version: v1.3.1
 """
 
 from __future__ import annotations

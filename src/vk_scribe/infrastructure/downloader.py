@@ -3,7 +3,7 @@ File:   downloader.py
 Brief:  Playlist downloading via yt-dlp and the filename -> URL manifest.
 Author: Mistress-Lukutar
 Date:   2026-09-12
-Version: v1.3.0
+Version: v1.3.1
 """
 
 from __future__ import annotations

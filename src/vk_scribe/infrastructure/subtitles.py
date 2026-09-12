@@ -3,7 +3,7 @@ File:   subtitles.py
 Brief:  VK sidecar subtitle (.vtt) discovery and parsing.
 Author: Mistress-Lukutar
 Date:   2026-09-12
-Version: v1.3.0
+Version: v1.3.1
 """
 
 from __future__ import annotations

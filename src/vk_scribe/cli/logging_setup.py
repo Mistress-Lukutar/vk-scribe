@@ -3,7 +3,7 @@ File:   logging_setup.py
 Brief:  Console logging configuration for the CLI entry point.
 Author: Mistress-Lukutar
 Date:   2026-09-12
-Version: v1.3.0
+Version: v1.3.1
 """
 
 from __future__ import annotations

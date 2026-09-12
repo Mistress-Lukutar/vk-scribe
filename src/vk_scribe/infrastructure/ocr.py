@@ -3,7 +3,7 @@ File:   ocr.py
 Brief:  Slide OCR via RapidOCR with the East-Slavic recognition model.
 Author: Mistress-Lukutar
 Date:   2026-09-12
-Version: v1.3.0
+Version: v1.3.1
 """
 
 from __future__ import annotations

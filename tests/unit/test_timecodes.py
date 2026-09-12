@@ -3,7 +3,7 @@ File:   test_timecodes.py
 Brief:  Tests for timecode formatting.
 Author: Mistress-Lukutar
 Date:   2026-09-12
-Version: v1.3.0
+Version: v1.3.1
 """
 
 from __future__ import annotations

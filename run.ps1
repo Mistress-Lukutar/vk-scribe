@@ -4,10 +4,11 @@
 
 .DESCRIPTION
   Bootstraps the tool end to end: installs uv when missing (winget, with
-  the official installer script as a fallback), syncs the project virtual
-  environment (.venv) from pyproject.toml / uv.lock — downloading a
-  managed Python when needed — then runs the vk-scribe CLI with every
-  argument passed through.
+  the official installer script as a fallback), checks ffmpeg before
+  downloading commands (and offers to install it via winget when absent),
+  syncs the project virtual environment (.venv) from pyproject.toml /
+  uv.lock — downloading a managed Python when needed — then runs the
+  vk-scribe CLI with every argument passed through.
 
 .EXAMPLE
   .\run.ps1 run "https://vkvideo.ru/playlist/-169062866_5/season_0" -o vk_course
@@ -23,7 +24,7 @@ $ErrorActionPreference = 'Stop'
 $ProjectRoot = $PSScriptRoot
 
 function Update-SessionPath {
-    # Re-read PATH from the registry so a just-installed uv becomes visible.
+    # Re-read PATH from the registry so a just-installed tool becomes visible.
     $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
     $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
     $env:Path = "$machinePath;$userPath"
@@ -50,8 +51,44 @@ function Ensure-Uv {
     }
 }
 
+function Ensure-Ffmpeg {
+    # yt-dlp needs ffmpeg to mux VK streams into mp4; extract works without it.
+    if (Get-Command ffmpeg -ErrorAction SilentlyContinue) {
+        return
+    }
+
+    Write-Warning 'ffmpeg not found on PATH — yt-dlp needs it to mux VK streams into mp4.'
+    $answer = Read-Host 'Install ffmpeg now via winget? (Y/n)'
+    if ($answer -match '^[Nn]') {
+        Write-Host 'Skipped. Downloading will fail until ffmpeg is installed.' -ForegroundColor Yellow
+        return
+    }
+
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+        Write-Warning 'winget is not available. Install ffmpeg manually: https://ffmpeg.org/download.html'
+        return
+    }
+
+    winget install --id Gyan.FFmpeg -e `
+        --accept-source-agreements --accept-package-agreements
+
+    Update-SessionPath
+    if (Get-Command ffmpeg -ErrorAction SilentlyContinue) {
+        Write-Host 'ffmpeg installed successfully.' -ForegroundColor Green
+    }
+    else {
+        Write-Warning 'ffmpeg was installed but is not on PATH yet. Open a new terminal and run this script again.'
+    }
+}
+
 Set-Location $ProjectRoot
 Ensure-Uv
+
+# Only the downloading commands need ffmpeg; extract reads local files.
+$Command = if ($CliArgs) { $CliArgs[0] } else { '' }
+if ($Command -in @('run', 'download')) {
+    Ensure-Ffmpeg
+}
 
 # Create/refresh .venv and install all dependencies (idempotent).
 Write-Host 'Syncing dependencies...' -ForegroundColor Cyan

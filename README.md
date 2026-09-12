@@ -12,20 +12,24 @@ video the tool produces, side by side with the file:
 
 ## Quick start (Windows)
 
-Requirements: **ffmpeg on PATH** (`winget install ffmpeg`) — yt-dlp needs
-it to mux VK streams into mp4. Everything else installs itself.
+No manual prerequisites — `run.ps1` bootstraps everything:
 
 ```powershell
 .\run.ps1 run "https://vkvideo.ru/playlist/-169062866_5/season_0" -o vk_course
 ```
 
-`run.ps1` bootstraps the whole environment:
+The launcher:
 
 1. installs **uv** via winget when missing (official installer script as
    a fallback);
-2. runs `uv sync` — creates `.venv`, installs every dependency from
+2. before `run`/`download`, checks **ffmpeg** — the only external tool
+   yt-dlp needs to mux VK streams into mp4. When it is missing, the
+   launcher warns and offers to install it via winget (Enter = install,
+   `n` = skip). `extract` reads local files without ffmpeg, so the check
+   is skipped for it;
+3. runs `uv sync` — creates `.venv`, installs every dependency from
    `uv.lock`, and downloads a managed Python 3.13 if none is present;
-3. launches the `vk-scribe` CLI with all passed-through arguments.
+4. launches the `vk-scribe` CLI with all passed-through arguments.
 
 On first use the tool also downloads:
 

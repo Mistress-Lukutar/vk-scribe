@@ -3,7 +3,7 @@ File:   conftest.py
 Brief:  Shared pytest fixtures for vk_scribe tests.
 Author: Mistress-Lukutar
 Date:   2026-09-12
-Version: v1.3.0
+Version: v1.3.1
 """
 
 from __future__ import annotations

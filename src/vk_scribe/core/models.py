@@ -4,7 +4,7 @@ Brief:  Data records and the validated extraction options shared across
         the vk_scribe pipeline.
 Author: Mistress-Lukutar
 Date:   2026-09-12
-Version: v1.3.0
+Version: v1.3.1
 """
 
 from __future__ import annotations
