@@ -1,0 +1,60 @@
+[project]
+name = "vk-scribe"
+version = "1.3.0"
+description = "Download VK Video playlists and turn lectures into text: speech transcripts, slide OCR, rebuilt PDF decks"
+readme = "README.md"
+authors = [{ name = "Mistress-Lukutar" }]
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.16",  # 0.16+: click 8.2 compat
+    "pydantic>=2.0",
+    "yt-dlp>=2025.9.5",
+    "faster-whisper>=1.1.0",
+    "rapidocr_onnxruntime>=1.4.4",
+    "opencv-python-headless>=4.10.0",
+    "numpy>=1.26.0",
+    "img2pdf>=0.5.0",
+]
+
+[project.scripts]
+vk-scribe = "vk_scribe.cli.main:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vk_scribe"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+
+[tool.mypy]
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = [
+    "cv2",
+    "yt_dlp",
+    "img2pdf",
+    "faster_whisper",
+    "rapidocr_onnxruntime",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
